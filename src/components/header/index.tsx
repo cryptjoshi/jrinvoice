@@ -1,61 +1,100 @@
+import React from "react";
 import type { RefineThemedLayoutV2HeaderProps } from "@refinedev/antd";
-import { useGetIdentity } from "@refinedev/core";
+import { useNavigation } from "@refinedev/core";
+import { Layout as AntdLayout, Button, theme, Flex, Tabs } from "antd";
 import {
-  Layout as AntdLayout,
-  Avatar,
-  Space,
-  Switch,
-  theme,
-  Typography,
-} from "antd";
-import React, { useContext } from "react";
-import { ColorModeContext } from "../../contexts/color-mode";
+  BankOutlined,
+  ShopOutlined,
+  ContainerOutlined,
+} from "@ant-design/icons";
+import { Link } from "react-router-dom";
+import { useLocation } from "react-router-dom";
+import { useConfigProvider } from "@/providers/config-provider";
+import { Search } from "@/components/header/search";
+import { IconMoon, IconSun } from "@/components/icons";
+import { User } from "@/components/header/user";
+import { Logo } from "@/components/logo";
+import { useStyles } from "./styled";
 
-const { Text } = Typography;
-const { useToken } = theme;
+export const Header: React.FC<RefineThemedLayoutV2HeaderProps> = () => {
+  const { list, listUrl } = useNavigation();
 
-type IUser = {
-  id: number;
-  name: string;
-  avatar: string;
-};
+  const location = useLocation();
 
-export const Header: React.FC<RefineThemedLayoutV2HeaderProps> = ({
-  sticky = true,
-}) => {
-  const { token } = useToken();
-  const { data: user } = useGetIdentity<IUser>();
-  const { mode, setMode } = useContext(ColorModeContext);
-
-  const headerStyles: React.CSSProperties = {
-    backgroundColor: token.colorBgElevated,
-    display: "flex",
-    justifyContent: "flex-end",
-    alignItems: "center",
-    padding: "0px 24px",
-    height: "64px",
-  };
-
-  if (sticky) {
-    headerStyles.position = "sticky";
-    headerStyles.top = 0;
-    headerStyles.zIndex = 1;
-  }
+  const { token } = theme.useToken();
+  const { mode, setMode } = useConfigProvider();
+  const { styles } = useStyles();
 
   return (
-    <AntdLayout.Header style={headerStyles}>
-      <Space>
-        <Switch
-          checkedChildren="🌛"
-          unCheckedChildren="🔆"
-          onChange={() => setMode(mode === "light" ? "dark" : "light")}
-          defaultChecked={mode === "dark"}
-        />
-        <Space style={{ marginLeft: "8px" }} size="middle">
-          {user?.name && <Text strong>{user.name}</Text>}
-          {user?.avatar && <Avatar src={user?.avatar} alt={user?.name} />}
-        </Space>
-      </Space>
+    <AntdLayout.Header
+      className="print-hidden"
+      style={{
+        backgroundColor: token.colorBgElevated,
+        padding: "0 16px",
+        minHeight: "48px",
+        height: "max-content",
+      }}
+    >
+      <Flex
+        align="center"
+        justify="space-between"
+        wrap="wrap"
+        style={{
+          width: "100%",
+          maxWidth: "1440px",
+          margin: "0 auto",
+          height: "100%",
+        }}
+      >
+        <Flex align="center" wrap="wrap">
+          <Link to={listUrl("accounts")}>
+            <Logo
+              style={{
+                width: "200px",
+              }}
+            />
+          </Link>
+          <Tabs
+            className={styles.tabs}
+            activeKey={location.pathname.split("/")[1]}
+            onChange={(key) => {
+              list(key);
+            }}
+            items={[
+              {
+                key: "accounts",
+                label: "Accounts",
+                // @ts-expect-error Ant Design Icon's v5.0.1 has an issue with @types/react@^18.2.66
+                icon: <BankOutlined />,
+              },
+              {
+                key: "clients",
+                label: "Clients",
+                // @ts-expect-error Ant Design Icon's v5.0.1 has an issue with @types/react@^18.2.66
+                icon: <ShopOutlined />,
+              },
+              {
+                key: "invoices",
+                label: "Invoices",
+                // @ts-expect-error Ant Design Icon's v5.0.1 has an issue with @types/react@^18.2.66
+                icon: <ContainerOutlined />,
+              },
+            ]}
+          />
+        </Flex>
+        <Flex align="center" gap={32} className={styles.rightSlot}>
+          <Search />
+          <Button
+            className={styles.themeSwitch}
+            type="text"
+            icon={mode === "light" ? <IconMoon /> : <IconSun />}
+            onClick={() => {
+              setMode(mode === "light" ? "dark" : "light");
+            }}
+          />
+          <User />
+        </Flex>
+      </Flex>
     </AntdLayout.Header>
   );
 };

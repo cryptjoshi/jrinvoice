@@ -1,27 +1,32 @@
 import type { AuthProvider } from "@refinedev/core";
 import { AuthHelper } from "@refinedev/strapi-v4";
-import axios from "axios";
-import { API_URL, TOKEN_KEY } from "./constants";
+import { API_URL, TOKEN_KEY } from "@/utils/constants";
 
-export const axiosInstance = axios.create();
-const strapiAuthHelper = AuthHelper(API_URL + "/api");
+export const strapiAuthHelper = AuthHelper(`${API_URL}/api`);
 
 export const authProvider: AuthProvider = {
   login: async ({ email, password }) => {
-    const { data, status } = await strapiAuthHelper.login(email, password);
-    if (status === 200) {
-      localStorage.setItem(TOKEN_KEY, data.jwt);
+    try {
+      const { data, status } = await strapiAuthHelper.login(email, password);
+      if (status === 200) {
+        localStorage.setItem(TOKEN_KEY, data.jwt);
 
-      // set header axios instance
-      axiosInstance.defaults.headers.common[
-        "Authorization"
-      ] = `Bearer ${data.jwt}`;
-
+        return {
+          success: true,
+          redirectTo: "/",
+        };
+      }
+    } catch (error: any) {
+      const errorObj = error?.response?.data?.message?.[0]?.messages?.[0];
       return {
-        success: true,
-        redirectTo: "/",
+        success: false,
+        error: {
+          message: errorObj?.message || "Login failed",
+          name: errorObj?.id || "Invalid email or password",
+        },
       };
     }
+
     return {
       success: false,
       error: {
@@ -38,15 +43,17 @@ export const authProvider: AuthProvider = {
     };
   },
   onError: async (error) => {
-    console.error(error);
+    if (error.response?.status === 401) {
+      return {
+        logout: true,
+      };
+    }
+
     return { error };
   },
   check: async () => {
     const token = localStorage.getItem(TOKEN_KEY);
     if (token) {
-      axiosInstance.defaults.headers.common[
-        "Authorization"
-      ] = `Bearer ${token}`;
       return {
         authenticated: true,
       };
@@ -55,14 +62,13 @@ export const authProvider: AuthProvider = {
     return {
       authenticated: false,
       error: {
-        message: "Check failed",
+        message: "Authentication failed",
         name: "Token not found",
       },
       logout: true,
       redirectTo: "/login",
     };
   },
-  getPermissions: async () => null,
   getIdentity: async () => {
     const token = localStorage.getItem(TOKEN_KEY);
     if (!token) {
@@ -74,7 +80,7 @@ export const authProvider: AuthProvider = {
       const { id, username, email } = data;
       return {
         id,
-        name: username,
+        username,
         email,
       };
     }
